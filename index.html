@@ -13,10 +13,10 @@
 	h1,h2,h3 {
 		line-height:1.2em;
 	}
-	.button {
-    background-color:#D9853B;
+	#botaocadastro {
+    background-color:red;
     color:white;
-    border: 3px solid #D9853B;
+    border: 3px solid red;
 	width:100%;
     padding: 10px 10px;
 	text-align:center;
@@ -24,6 +24,21 @@
     display: inline-block;
     font-size: 24px;
 }
+	#botaofloater {
+	position:fixed;
+	bottom: 0px;
+	background-color:red;
+    color:white;
+    border: 3px solid red;
+	width:100%;
+    padding: 10px 10px;
+	text-align:center;
+	font-weight: bold;
+    display: inline-block;
+    font-size: 24px;
+
+
+	}
 	input {
 	align:center;
 	background-color:white;
@@ -81,11 +96,13 @@
 </style>
 <article>
 	<header>
+	  <a href="#A"><button id="botaofloater" type="button">Clique e Cadastre-se</button></a>
 	<div class="b1">
 		<div class="wrapper">
 		<img src="image/marca1.png" alt="Domingos de Almeida - Parque Residencial">
 		</div></div></header>
 	<body>
+	<div class=cadastro></div>
 	<div class="wrapper">
 		<img src="image/acesso1.jpg" alt="Acesso"></div>
 	<div class="b6">
@@ -111,6 +128,7 @@
 	<div class="wrapper">
 	<h2>As melhores condições de pagamento</h2>
 	<h3>Pequena entrada e saldo em até 180 meses direto com a urbanizadora, e mais!</h3></div></div>
+	    <a name="A"></a>
 	<div class="b3">
 	<div class="wrapper">
   	    <h2>Cadastre-se aqui</h2>
@@ -118,9 +136,10 @@
       <input name="entry.1946580253" type="text" id="nome" placeholder="Nome" required="true"/><br>
       <input name="entry.129915879" type="text" id="email" placeholder="Email" required="true"/><br>
       <input name="entry.1530126000" type="text" id="telefone" placeholder="Telefone" required="true"/><br>
-      <input class="button" type="submit" value="Enviar">
+      <input class="button" id="botaocadastro" type="submit" value="Enviar">
     </form></div></div>
     </div>
+
     </body>
 	<div class="b4">
 	<div class="wrapper">
