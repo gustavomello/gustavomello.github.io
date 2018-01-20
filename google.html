@@ -119,6 +119,39 @@ a:link {
 </style>
 <article>
 	<header>
+	<!-- Google Code for cadastros site Conversion Page
+In your html page, add the snippet and call
+goog_report_conversion when someone clicks on the
+chosen link or button. -->
+<script type="text/javascript">
+  /* <![CDATA[ */
+  goog_snippet_vars = function() {
+    var w = window;
+    w.google_conversion_id = 898017552;
+    w.google_conversion_label = "MNTpCPr9sXsQkNKarAM";
+    w.google_remarketing_only = false;
+  }
+  // DO NOT CHANGE THE CODE BELOW.
+  goog_report_conversion = function(url) {
+    goog_snippet_vars();
+    window.google_conversion_format = "3";
+    var opt = new Object();
+    opt.onload_callback = function() {
+    if (typeof(url) != 'undefined') {
+      window.location = url;
+    }
+  }
+  var conv_handler = window['google_trackConversion'];
+  if (typeof(conv_handler) == 'function') {
+    conv_handler(opt);
+  }
+}
+/* ]]> */
+</script>
+<script type="text/javascript"
+  src="//www.googleadservices.com/pagead/conversion_async.js">
+</script>
+
 	<!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-42367517-4"></script>
 <script>
@@ -183,7 +216,7 @@ a:link {
       <input name="entry.1946580253" type="text" id="nome" placeholder="Nome" required="true"/><br>
       <input name="entry.129915879" type="text" id="email" placeholder="Email" required="true"/><br>
       <input name="entry.1530126000" type="text" id="telefone" placeholder="Telefone" required="true"/><br>
-      <input class="button" id="botaocadastro" type="submit" value="Enviar">
+      <input class="button" onclick="return gtag_report_conversion()" id="botaocadastro" type="submit" value="Enviar">
     </form>
 		<img src="image/m91.png" class="imgrest" alt="Aérea">
 		  <a href="http://www.facebook.com/luccafragata"><h2>Clique aqui e acesse a página do Lucca no Facebook!</h2></a>
