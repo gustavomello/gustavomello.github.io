@@ -131,6 +131,7 @@ a:link {
   'https://connect.facebook.net/en_US/fbevents.js');
   fbq('init', '978839022202439');
   fbq('track', 'PageView');
+    fbq('track', 'Lead');
 </script>
 <noscript><img height="1" width="1" style="display:none"
   src="https://www.facebook.com/tr?id=978839022202439&ev=PageView&noscript=1"
@@ -174,12 +175,12 @@ a:link {
   	    <h2>Cadastre-se e Faça uma Simulação</h2>
     <form id="submitButton" action="https://docs.google.com/forms/d/e/1FAIpQLSe8fqotVcm8UtgjmqoYkySrH8Rnn09OoHU1tTLmIWl8lyQbjw/formResponse">
       <input name="entry.1946580253" type="text" id="nome" placeholder="Nome" required="true"/><br>
-      <input name="entry.1530126000" type="text" id="telefone" placeholder="WhatsApp" required="true"/><br>
+      <input name="entry.1530126000" type="text" id="telefone" placeholder="WhatsApp/Telefone" required="true"/><br>
       <input class="button" onclick="return gtag_report_conversion()" id="botaocadastro" type="submit" value="Enviar"></form>
       <script type="text/javascript">
 			$( '#$submitButton' ).click(function() {
 			 fbq('track', 'Lead');
-		</script>
+	</script>
 		<img src="image/m911.png" class="imgrest" alt="Logotipo">
 		  <a href="http://www.facebook.com/luccafragata"><h2>Clique aqui e acesse a página do Lucca no Facebook!</h2></a>
     </div></div>
