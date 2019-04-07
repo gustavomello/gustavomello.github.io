@@ -118,7 +118,7 @@ a:link {
     color:black;
 }
 </style>
-<head>
+<head>	
 <!-- Facebook Pixel Code -->
 <script>
   !function(f,b,e,v,n,t,s)
@@ -172,10 +172,14 @@ a:link {
 	<div class="b3">
 	<div class="wrapper">
   	    <h2>Cadastre-se e Faça uma Simulação</h2>
-    <form action="https://docs.google.com/forms/d/e/1FAIpQLSe8fqotVcm8UtgjmqoYkySrH8Rnn09OoHU1tTLmIWl8lyQbjw/formResponse">
+    <form id="submitButton" action="https://docs.google.com/forms/d/e/1FAIpQLSe8fqotVcm8UtgjmqoYkySrH8Rnn09OoHU1tTLmIWl8lyQbjw/formResponse">
       <input name="entry.1946580253" type="text" id="nome" placeholder="Nome" required="true"/><br>
       <input name="entry.1530126000" type="text" id="telefone" placeholder="WhatsApp" required="true"/><br>
       <input class="button" onclick="return gtag_report_conversion()" id="botaocadastro" type="submit" value="Enviar"></form>
+      <script type="text/javascript">
+			$( '#$submitButton' ).click(function() {
+			 fbq('track', 'Lead');
+		</script>
 		<img src="image/m911.png" class="imgrest" alt="Logotipo">
 		  <a href="http://www.facebook.com/luccafragata"><h2>Clique aqui e acesse a página do Lucca no Facebook!</h2></a>
     </div></div>
