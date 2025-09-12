@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sofia Modular States</title>
+
+  <!-- Coolvetica font -->
+  <link href="https://fonts.cdnfonts.com/css/coolvetica" rel="stylesheet">
+
+  <style>
+    :root { --font-size: 3rem; }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      background: #000;
+    }
+    body {
+      font-family: 'Coolvetica', sans-serif;
+      font-size: var(--font-size);
+      overflow: hidden;
+    }
+
+    .state {
+      display: none;
+      height: 100vh;
+      width: 100vw;
+    }
+    .state.active {
+      display: flex;
+    }
+
+    /* STATE 1 (scrolling lines) */
+    #state1 {
+      flex-direction: column;
+    }
+    .line {
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      white-space: nowrap;
+      flex: 1 1 auto;
+      max-height: calc(var(--font-size) * 1.5);
+    }
+    .line:nth-child(odd) { background: #000; color: #fff; }
+    .line:nth-child(even) { background: #fff; color: #000; }
+
+    .inner { display: flex; align-items: center; }
+    .text { padding-right: 2rem; white-space: nowrap; }
+
+    @keyframes scroll-left {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* STATE 2 (final centered word) */
+    #state2 {
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      color: #fff;
+      font-size: 20vmin;
+    }
+
+    /* STATE 3 (example) */
+    #state3 {
+      align-items: center;
+      justify-content: center;
+      background: #E7A200;
+      color: #fff;
+      font-size: 4vmin;
+
+    }
+
+    /* STATE 4 (example) */
+    #state4 {
+      align-items: center;
+      justify-content: center;
+      background: #DE000C;
+      color: #000;
+      font-size: 8vmin;
+    }
+        #state5 {
+      align-items: center;
+      justify-content: center;
+      background: #0014B4;
+      color: #E9E4D7;
+      font-size: 8vmin;
+    }
+        #state6 {
+      align-items: center;
+      justify-content: center;
+      background: #eae4d4;
+      color: #000;
+      font-size: 8vmin;
+    }
+        #state7 {
+      align-items: center;
+      justify-content: center;
+      background: #00FF00;
+      color: #000;
+      font-size: 8vmin;
+    }
+
+            #state8 {
+      align-items: center;
+      padding-left: 1em;
+      justify-content: center;
+      background: white;
+      color: black;
+      font-size: 3vmin;
+      font-family: serif;
+    }
+
+                #state9 {
+      align-items: center;
+      padding-left: 1em;
+      justify-content: center;
+      background: black;
+      color: white;
+      font-size: 3vmin;
+      font-family: serif;
+    }
+  </style>
+</head>
+<body>
+  <!-- State 1: scrolling lines -->
+  <div id="state1" class="state"></div>
+
+  <!-- State 2: single centered "sofia" -->
+  <div id="state2" class="state">
+    sofia
+  </div>
+
+  <!-- State 3: demo -->
+  <div id="state3" class="state">
+    <div>escrevo-lhe aqui de pelotas para lhe dar uma notícia grave:</div>
+  </div>
+
+  <!-- State 4: demo -->
+  <div id="state4" class="state">
+    <div>a saudade bateu</div>
+  </div>
+
+    <div id="state5" class="state">
+    <div>espero que você também sinta saudade...</div>
+  </div>
+
+    <div id="state6" class="state">
+    <div>mas também</div>
+  </div>
+
+    <div id="state7" class="state">
+    <div>feliz aniversário! <br> 🎂🎈🎉🥳</div>
+  </div>
+
+      <div id="state8" class="state">
+    <div>e quando eu já não sei o que dizer, roubo as palavras dos outros</div>
+  </div>
+
+      <div id="state9" class="state">
+    <div>  i like my body when it is with your<br>
+body.&nbsp; It is so quite new a thing.<br>
+Muscles better and nerves more.<br>
+i like your body.&nbsp; i like what it does,<br>
+i like its hows.&nbsp; i like to feel the spine<br>
+of your body and its bones, and the trembling<br>
+-firm-smooth ness and which i will<br>
+again and again and again<br>
+kiss,&nbsp; i like kissing this and that of you,<br>
+i like, slowly stroking the, shocking fuzz<br>
+of your electric fur, and what-is-it comes<br>
+over parting flesh&hellip; And eyes big love-crumbs,<br>
+<br>
+and possibly i like the thrill<br>
+<br>
+of under me you so quite new
+<br><br>e.e. cummings</div>
+  </div>
+
+
+
+
+  <script>
+    let currentState = 1;
+    const totalStates = 9;
+    const states = [...document.querySelectorAll('.state')];
+
+    function showState(n) {
+      states.forEach(s => s.classList.remove('active'));
+      const st = document.getElementById('state' + n);
+      if (st) st.classList.add('active');
+      currentState = n;
+
+      // Initialize special states
+      if (n === 1) buildLines();
+    }
+
+    function nextState() {
+      let next = currentState + 1;
+      if (next > totalStates) next = 1;
+      showState(next);
+    }
+
+    // Handle clicks to go to next state
+    document.body.addEventListener('click', nextState);
+
+    // STATE 1 builder
+    async function buildLines() {
+      const container = document.getElementById('state1');
+      container.innerHTML = ''; // reset
+
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+      }
+      const bodyStyle = getComputedStyle(document.body);
+      const fontSizePx = parseFloat(bodyStyle.fontSize) || 48;
+      const lineHeightPx = fontSizePx * 1.5;
+      const numLines = Math.max(1, Math.ceil(window.innerHeight / lineHeightPx));
+
+      for (let i = 0; i < numLines; i++) {
+        const line = document.createElement('div');
+        line.className = 'line';
+        const inner = document.createElement('div');
+        inner.className = 'inner';
+
+        const text = document.createElement('div');
+        text.className = 'text';
+        text.textContent = 'SAMS ';
+        inner.appendChild(text);
+        line.appendChild(inner);
+        container.appendChild(line);
+
+        let safety = 0;
+        while (text.scrollWidth < window.innerWidth && safety < 500) {
+          text.textContent += 'SAMS ';
+          safety++;
+        }
+
+        const clone = text.cloneNode(true);
+        inner.appendChild(clone);
+
+        const speedPxPerSec = 100;
+        const durationSec = Math.max(6, inner.scrollWidth / speedPxPerSec);
+
+        inner.style.animationName = 'scroll-left';
+        inner.style.animationDuration = durationSec + 's';
+        inner.style.animationTimingFunction = 'linear';
+        inner.style.animationIterationCount = 'infinite';
+        if (i % 2 === 1) inner.style.animationDirection = 'reverse';
+      }
+    }
+
+    // On load, show state 1
+    showState(1);
+
+    window.addEventListener('resize', () => {
+      if (currentState === 1) buildLines();
+    });
+  </script>
+</body>
+</html>
