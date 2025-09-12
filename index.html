@@ -43,17 +43,19 @@
       overflow: hidden;
       white-space: nowrap;
       flex: 1 1 auto;
-      max-height: calc(var(--font-size) * 1.5);
+      max-height: calc(var(--font-size) * 1);
+      margin: 0;
     }
     .line:nth-child(odd) { background: #000; color: #fff; }
     .line:nth-child(even) { background: #fff; color: #000; }
 
     .inner { display: flex; align-items: center; }
-    .text { padding-right: 2rem; white-space: nowrap; }
+    .text { padding-right: 0.6rem;padding-top: .5rem; white-space: nowrap;}
 
     @keyframes scroll-left {
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
+      padding-right: 0;
     }
 
     /* STATE 2 (final centered word) */
@@ -71,7 +73,7 @@
       justify-content: center;
       background: #E7A200;
       color: #fff;
-      font-size: 4vmin;
+      font-size: 8vmin;
 
     }
 
@@ -111,7 +113,7 @@
       justify-content: center;
       background: white;
       color: black;
-      font-size: 3vmin;
+      font-size: 5vmin;
       font-family: serif;
     }
 
@@ -121,7 +123,7 @@
       justify-content: center;
       background: black;
       color: white;
-      font-size: 3vmin;
+      font-size: 4.2vmin;
       font-family: serif;
     }
   </style>
@@ -137,7 +139,7 @@
 
   <!-- State 3: demo -->
   <div id="state3" class="state">
-    <div>escrevo-lhe aqui de pelotas para lhe dar uma notícia grave:</div>
+    <div>escrevo-lhe aqui<br> de pelotas para <br>lhe dar uma <br>notícia grave:</div>
   </div>
 
   <!-- State 4: demo -->
@@ -146,7 +148,7 @@
   </div>
 
     <div id="state5" class="state">
-    <div>espero que você também sinta saudade...</div>
+    <div>espero que você<br> também sinta saudade...</div>
   </div>
 
     <div id="state6" class="state">
@@ -158,7 +160,7 @@
   </div>
 
       <div id="state8" class="state">
-    <div>e quando eu já não sei o que dizer, roubo as palavras dos outros</div>
+    <div>e quando eu já não sei o que dizer, <br>roubo as palavras dos outros</div>
   </div>
 
       <div id="state9" class="state">
@@ -218,7 +220,7 @@ of under me you so quite new
       }
       const bodyStyle = getComputedStyle(document.body);
       const fontSizePx = parseFloat(bodyStyle.fontSize) || 48;
-      const lineHeightPx = fontSizePx * 1.5;
+      const lineHeightPx = fontSizePx * 1;
       const numLines = Math.max(1, Math.ceil(window.innerHeight / lineHeightPx));
 
       for (let i = 0; i < numLines; i++) {
