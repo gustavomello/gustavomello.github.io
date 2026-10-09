@@ -232,19 +232,16 @@
 
   function grafico(linhas, parcelas) {
     const W = 640, H = 220, padL = 56, padB = 24, padT = 8;
-    const totais = linhas.map((l, i) => l.jo + parcelas[i]);
-    const max = Math.max(...totais) || 1;
+    const max = Math.max(...linhas.map((l, i) => l.jo + parcelas[i])) || 1;
     const bw = (W - padL) / linhas.length;
     const y = v => (H - padB) - (v / max) * (H - padB - padT);
     let bars = '';
     linhas.forEach((l, i) => {
-      const x = padL + i * bw + bw * 0.15, w = bw * 0.7;
-      let base = 0;
-      [[l.juros, 'var(--bar-juros)'], [l.correcao, 'var(--bar-tr)'], [parcelas[i], 'var(--bar-entrada)']].forEach(([v, c]) => {
-        if (v <= 0) return;
-        bars += `<rect x="${x}" y="${y(base + v)}" width="${w}" height="${y(base) - y(base + v)}" fill="${c}"><title>Mês ${l.m}: ${brl(totais[i])}</title></rect>`;
-        base += v;
-      });
+      const x = padL + i * bw + bw * 0.15, w = bw * 0.7, pe = parcelas[i];
+      const dica = `Mês ${l.m} — Juros de obra: ${brl(l.jo)} | Entrada: ${brl(pe)} | Total: ${brl(l.jo + pe)}`;
+      bars += `<rect x="${x}" y="${y(l.jo)}" width="${w}" height="${y(0) - y(l.jo)}" fill="var(--bar-juros)"><title>${dica}</title></rect>`;
+      if (pe > 0)
+        bars += `<rect x="${x}" y="${y(l.jo + pe)}" width="${w}" height="${y(l.jo) - y(l.jo + pe)}" fill="var(--bar-entrada)"><title>${dica}</title></rect>`;
       if (linhas.length <= 24 || l.m % Math.ceil(linhas.length / 12) === 0)
         bars += `<text x="${x + w / 2}" y="${H - 6}" font-size="10" text-anchor="middle" fill="var(--muted)">${l.m}</text>`;
     });
@@ -254,7 +251,7 @@
       grid += `<line x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--border)"/>` +
               `<text x="${padL - 6}" y="${y(v) + 4}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(v).toLocaleString('pt-BR')}</text>`;
     }
-    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Desembolso total mensal">${grid}${bars}</svg>`;
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Desembolso mensal: juros de obra e parcela da entrada">${grid}${bars}</svg>`;
   }
 
   function render() {
@@ -267,44 +264,157 @@
           <input id="ato" class="money" type="text" inputmode="decimal" value="${fmt(estado.ato)}">
         </div>
         <button type="button" class="secondary" id="distribuir">Distribuir restante nas parcelas</button>
+        <button type="button" class="secondary" id="distribuirDec">Parcelas decrescentes (desembolso constante)</button>
       </div>
+      <div id="distMsg"></div>
       <div id="entradaMsg"></div>
       <div id="kpis" class="kpis"></div>
       <div id="chart"></div>
       <div class="legend">
-        <span><i style="background:var(--bar-juros)"></i>Juros</span>
-        <span><i style="background:var(--bar-tr)"></i>Correção TR</span>
+        <span><i style="background:var(--bar-juros)"></i>Juros de Obra</span>
         <span><i style="background:var(--bar-entrada)"></i>Parcela da entrada</span>
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Mês</th><th>% obra</th><th>Saldo liberado</th><th>Juros</th><th>Correção TR</th>
-            <th>Juros de obra</th><th>Parcela da entrada</th><th>Desembolso total mensal</th></tr></thead>
+          <thead><tr><th>Mês</th><th>% obra</th><th>Juros de obra</th><th>Parcela da entrada</th><th>Desembolso total mensal</th></tr></thead>
           <tbody>${linhas.map((l, i) => `<tr>
-            <td>${l.m}</td><td>${pct(l.perc)}</td><td>${brl(l.saldo)}</td><td>${brl(l.juros)}</td><td>${brl(l.correcao)}</td>
-            <td><strong>${brl(l.jo)}</strong></td>
+            <td>${l.m}</td><td>${pct(l.perc)}</td><td>${brl(l.jo)}</td>
             <td><input class="money parcela" data-i="${i}" type="text" inputmode="decimal" value="${fmt(estado.parcelas[i])}"></td>
             <td class="total" id="tot${i}"></td></tr>`).join('')}</tbody>
-          <tfoot><tr><td>Total</td><td></td><td></td><td id="fJ"></td><td id="fA"></td><td id="fJO"></td><td id="fP"></td><td id="fT"></td></tr></tfoot>
+          <tfoot><tr><td>Total</td><td></td><td id="fJO"></td><td id="fP"></td><td id="fT"></td></tr></tfoot>
         </table>
       </div>`;
 
     $('ato').addEventListener('input', () => { estado.ato = money('ato'); atualizarEntrada(); });
     $('result').querySelectorAll('.parcela').forEach(el => el.addEventListener('input', () => {
-      estado.parcelas[+el.dataset.i] = parseMoney(el.value); atualizarEntrada();
+      estado.parcelas[+el.dataset.i] = parseMoney(el.value); $('distMsg').innerHTML = ''; atualizarEntrada();
     }));
     $('distribuir').addEventListener('click', distribuir);
+    $('distribuirDec').addEventListener('click', distribuirDecrescente);
     atualizarEntrada();
+  }
+
+  const PARCELA_MIN = 20000;   // R$ 200,00 em centavos
+  const MAX_VALORES = 4;       // valores distintos de parcela permitidos no contrato
+
+  function aplicarParcelas(centavos) {
+    estado.parcelas = centavos.map(c => c / 100);
+    $('result').querySelectorAll('.parcela').forEach(el => setMoney(el, estado.parcelas[+el.dataset.i]));
+    atualizarEntrada();
+  }
+
+  // Restante a parcelar em centavos, ou null (com mensagem) se não couber o mínimo por parcela
+  function restanteParcelar() {
+    const n = estado.linhas.length;
+    const restante = cents(estado.p.rp) - cents(estado.ato);
+    if (restante < 0) {
+      $('distMsg').innerHTML = `<div class="msg err">O ato é maior que os recursos próprios.</div>`;
+      return null;
+    }
+    if (restante > 0 && restante < PARCELA_MIN * n) {
+      $('distMsg').innerHTML = `<div class="msg err">O restante (${brl(restante / 100)}) não permite ${n} parcelas de no mínimo
+        ${brl(PARCELA_MIN / 100)} (seriam necessários ${brl(PARCELA_MIN * n / 100)}). Reduza o ato.</div>`;
+      return null;
+    }
+    return restante;
   }
 
   // Divide (recursos próprios − ato) igualmente; centavos de arredondamento vão para a última parcela
   function distribuir() {
-    const { p, linhas } = estado;
-    const restante = Math.max(0, cents(p.rp) - cents(estado.ato));
-    const base = Math.floor(restante / linhas.length);
-    estado.parcelas = linhas.map((_, i) => (i === linhas.length - 1 ? restante - base * (linhas.length - 1) : base) / 100);
-    $('result').querySelectorAll('.parcela').forEach(el => setMoney(el, estado.parcelas[+el.dataset.i]));
-    atualizarEntrada();
+    const n = estado.linhas.length;
+    const restante = restanteParcelar();
+    if (restante === null) return;
+    const base = Math.floor(restante / n);
+    $('distMsg').innerHTML = '';
+    aplicarParcelas(estado.linhas.map((_, i) => i === n - 1 ? restante - base * (n - 1) : base));
+  }
+
+  /*
+   * Parcelas decrescentes com até 4 valores distintos, deixando o desembolso (juros de obra + parcela)
+   * o mais constante possível. Os meses são divididos em até 4 blocos consecutivos, cada um com um valor.
+   * Para um conjunto de blocos, o valor ótimo de cada bloco é v_k = C − média(juros de obra do bloco),
+   * com C ajustado para a soma bater com o restante; blocos que ficariam abaixo do mínimo são fixados no
+   * mínimo e C é recalculado. Testa todas as divisões e fica com a de menor variância do desembolso.
+   */
+  function distribuirDecrescente() {
+    const n = estado.linhas.length;
+    const R = restanteParcelar();
+    if (R === null) return;
+    if (R === 0) { $('distMsg').innerHTML = ''; aplicarParcelas(Array(n).fill(0)); return; }
+
+    const jo = estado.linhas.map(l => l.jo * 100);
+    const P1 = [0], P2 = [0];
+    jo.forEach((v, i) => { P1.push(P1[i] + v); P2.push(P2[i] + v * v); });
+
+    function resolver(cortes) {
+      const lim = [0, ...cortes, n];
+      const blocos = [];
+      for (let k = 0; k < lim.length - 1; k++) {
+        const a = lim[k], b = lim[k + 1];
+        blocos.push({ a, b, n: b - a, s1: P1[b] - P1[a], s2: P2[b] - P2[a] });
+      }
+      const fixo = blocos.map(() => false);
+      let v;
+      for (;;) {
+        let nLivre = 0, sLivre = 0, nFixo = 0;
+        blocos.forEach((bl, k) => { if (fixo[k]) nFixo += bl.n; else { nLivre += bl.n; sLivre += bl.s1; } });
+        if (nLivre === 0) return null;
+        const C = (R - PARCELA_MIN * nFixo + sLivre) / nLivre;
+        v = blocos.map((bl, k) => fixo[k] ? PARCELA_MIN : C - bl.s1 / bl.n);
+        let mudou = false;
+        v.forEach((x, k) => { if (!fixo[k] && x < PARCELA_MIN) { fixo[k] = true; mudou = true; } });
+        if (!mudou) break;
+      }
+      const media = (P1[n] + R) / n;
+      let custo = -n * media * media;
+      blocos.forEach((bl, k) => { custo += bl.s2 + 2 * v[k] * bl.s1 + bl.n * v[k] * v[k]; });
+      return { blocos, v, custo };
+    }
+
+    // Todas as divisões em 1..4 blocos consecutivos
+    const candidatos = [];
+    (function gerar(cortes, inicio) {
+      const r = resolver(cortes);
+      if (r) candidatos.push(r);
+      if (cortes.length === MAX_VALORES - 1) return;
+      for (let c = inicio; c < n; c++) gerar([...cortes, c], c + 1);
+    })([], 1);
+    candidatos.sort((x, y) => x.custo - y.custo);
+
+    // Arredonda para centavos garantindo soma exata, ordem decrescente e mínimo
+    function arredondar({ blocos, v }) {
+      const base = v.map(Math.round);
+      const r = R - blocos.reduce((s, bl, k) => s + bl.n * base[k], 0);
+      const K = blocos.length, D = 30;
+      let melhor = null;
+      const d = Array(K).fill(0);
+      (function busca(k, resto) {
+        if (k === K - 1) {
+          if (resto % blocos[k].n !== 0) return;
+          d[k] = resto / blocos[k].n;
+          const val = base.map((x, i) => x + d[i]);
+          if (val.some(x => x < PARCELA_MIN) || val.some((x, i) => i && x > val[i - 1])) return;
+          const custo = d.reduce((s, x) => s + Math.abs(x), 0);
+          if (!melhor || custo < melhor.custo) melhor = { custo, val };
+          return;
+        }
+        for (let x = -D; x <= D; x++) { d[k] = x; busca(k + 1, resto - x * blocos[k].n); }
+      })(0, r);
+      return melhor && melhor.val;
+    }
+
+    for (const cand of candidatos.slice(0, 30)) {
+      const val = arredondar(cand);
+      if (!val) continue;
+      const parcelas = [];
+      cand.blocos.forEach((bl, k) => { for (let i = bl.a; i < bl.b; i++) parcelas.push(val[k]); });
+      const faixas = cand.blocos.map((bl, k) =>
+        `<li>${bl.n === 1 ? `Mês ${bl.a + 1}` : `Meses ${bl.a + 1} a ${bl.b}`} (${bl.n}x): <strong>${brl(val[k] / 100)}</strong></li>`).join('');
+      $('distMsg').innerHTML = `<div class="msg ok">Parcelas decrescentes da entrada:<ul style="margin:4px 0 0">${faixas}</ul></div>`;
+      aplicarParcelas(parcelas);
+      return;
+    }
+    $('distMsg').innerHTML = `<div class="msg err">Não foi possível encontrar parcelas decrescentes que fechem o valor exato.</div>`;
   }
 
   function atualizarEntrada() {
@@ -312,18 +422,22 @@
     const soma = arr => arr.reduce((s, v) => s + v, 0);
     linhas.forEach((l, i) => { $('tot' + i).textContent = brl(l.jo + parcelas[i]); });
     const totJO = soma(linhas.map(l => l.jo)), totP = soma(parcelas);
-    $('fJ').textContent = brl(soma(linhas.map(l => l.juros)));
-    $('fA').textContent = brl(soma(linhas.map(l => l.correcao)));
     $('fJO').textContent = brl(totJO);
     $('fP').textContent = brl(totP);
     $('fT').textContent = brl(totJO + totP);
 
     const entrada = estado.ato + totP;
     const dif = p.rp - entrada;
-    $('entradaMsg').innerHTML = igual(entrada, p.rp)
-      ? `<div class="msg ok">Ato + parcelas fecham os recursos próprios (${brl(p.rp)}).</div>`
-      : `<div class="msg err">Ato (${brl(estado.ato)}) + parcelas (${brl(totP)}) = <strong>${brl(entrada)}</strong>.
-         ${dif > 0 ? 'Faltam' : 'Excedem'} <strong>${brl(Math.abs(dif))}</strong> para os recursos próprios (${brl(p.rp)}).</div>`;
+    const abaixoMin = totP > 0 ? parcelas.filter(v => cents(v) < PARCELA_MIN).length : 0;
+    const msgs = [];
+    if (!igual(entrada, p.rp))
+      msgs.push(`Ato (${brl(estado.ato)}) + parcelas (${brl(totP)}) = <strong>${brl(entrada)}</strong>.
+         ${dif > 0 ? 'Faltam' : 'Excedem'} <strong>${brl(Math.abs(dif))}</strong> para os recursos próprios (${brl(p.rp)}).`);
+    if (abaixoMin)
+      msgs.push(`${abaixoMin} parcela(s) abaixo do mínimo de ${brl(PARCELA_MIN / 100)}.`);
+    $('entradaMsg').innerHTML = msgs.length
+      ? `<div class="msg err">${msgs.join('<br>')}</div>`
+      : `<div class="msg ok">Ato + parcelas fecham os recursos próprios (${brl(p.rp)}).</div>`;
 
     const mensais = linhas.map((l, i) => l.jo + parcelas[i]);
     $('kpis').innerHTML = `
