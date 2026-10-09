@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador Juros de Obra</title>
+<style>
+  :root {
+    --bg: #f5f7fa; --card: #ffffff; --text: #1d2733; --muted: #5f6b7a;
+    --border: #dde3ea; --accent: #0b6bcb; --accent-soft: #e6f0fb;
+    --bar-juros: #0b6bcb; --bar-tr: #f0a020; --bar-entrada: #2e9e6a;
+    --warn-bg: #fff6e0; --warn-text: #7a5300;
+    --err-bg: #fdecec; --err-text: #a12020;
+    --ok-bg: #e7f6ee; --ok-text: #1d6b45;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11161c; --card: #1a212a; --text: #e6ebf0; --muted: #9aa6b4;
+      --border: #2c3640; --accent: #4ea1f0; --accent-soft: #1d3147;
+      --bar-juros: #4ea1f0; --bar-tr: #f2b44a; --bar-entrada: #4cc38a;
+      --warn-bg: #3a2f12; --warn-text: #f4d58d;
+      --err-bg: #3d1c1c; --err-text: #f5a3a3;
+      --ok-bg: #16352a; --ok-text: #8fe0b8;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 0 0 4px; }
+  h3 { font-size: .95rem; margin: 22px 0 0; padding-top: 14px; border-top: 1px solid var(--border); }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; min-width: 0; }
+  label { display: block; font-weight: 600; font-size: .9rem; margin: 12px 0 4px; }
+  label small { font-weight: 400; color: var(--muted); }
+  input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px;
+          background: var(--bg); color: var(--text); font-size: 1rem; font-family: inherit; }
+  input.money { text-align: right; font-variant-numeric: tabular-nums; }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button.primary { width: 100%; margin-top: 18px; padding: 12px; border: none; border-radius: 8px;
+                   background: var(--accent); color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+  button.primary:hover { filter: brightness(1.08); }
+  button.secondary { padding: 8px 12px; border: 1px solid var(--accent); border-radius: 8px; background: transparent;
+                     color: var(--accent); font-weight: 600; cursor: pointer; font-size: .9rem; }
+  .msg { border-radius: 8px; padding: 10px 12px; margin: 12px 0 0; font-size: .9rem; }
+  .msg.err { background: var(--err-bg); color: var(--err-text); }
+  .msg.ok { background: var(--ok-bg); color: var(--ok-text); }
+  .msg.warn { background: var(--warn-bg); color: var(--warn-text); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 16px 0 20px; }
+  .kpi { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; }
+  .kpi span { display: block; font-size: .8rem; color: var(--muted); }
+  .kpi strong { font-size: 1.25rem; }
+  .entrada-bar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 4px; }
+  .entrada-bar > div { flex: 1 1 200px; }
+  .entrada-bar label { margin-top: 0; }
+  .legend { display: flex; gap: 16px; font-size: .85rem; color: var(--muted); margin: 6px 0 20px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: center; }
+  th { color: var(--muted); font-weight: 600; background: var(--card); }
+  td input.money { width: 130px; padding: 5px 8px; font-size: .9rem; }
+  td.total { font-weight: 700; color: var(--accent); }
+  tfoot td { font-weight: 700; border-top: 2px solid var(--border); }
+  .formula { margin-top: 20px; }
+  .formula code { background: var(--bg); padding: 2px 6px; border-radius: 4px; }
+  .formula li { margin-bottom: 6px; }
+  .empty { color: var(--muted); text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Simulador de Juros de Obra</h1>
+  <p class="sub">Estimativa do desembolso mensal durante a fase de construção — Minha Casa Minha Vida.</p>
+
+  <div class="layout">
+    <form id="form" class="card" novalidate>
+      <h2>Dados do negócio</h2>
+
+      <label for="tipo">Tipo de unidade</label>
+      <select id="tipo">
+        <option value="235000">Com sacada</option>
+        <option value="230000">Sem sacada</option>
+        <option value="230000">PNE</option>
+      </select>
+
+      <label for="vi">Valor do imóvel (R$)</label>
+      <input id="vi" class="money" type="text" inputmode="decimal" value="235.000,00">
+
+      <label for="vid">Valor do imóvel com desconto (R$)</label>
+      <input id="vid" class="money" type="text" inputmode="decimal" value="235.000,00">
+
+      <label for="desc">Valor do desconto (R$)</label>
+      <input id="desc" class="money" type="text" value="0,00" readonly tabindex="-1">
+
+      <h3>Composição do pagamento</h3>
+
+      <label for="fin">Financiamento (R$)</label>
+      <input id="fin" class="money" type="text" inputmode="decimal" value="180.000,00">
+
+      <label for="sub">Subsídio (R$)</label>
+      <input id="sub" class="money" type="text" inputmode="decimal" value="20.000,00">
+
+      <label for="fgts">FGTS (R$)</label>
+      <input id="fgts" class="money" type="text" inputmode="decimal" value="15.000,00">
+
+      <label for="rp">Recursos próprios (R$)</label>
+      <input id="rp" class="money" type="text" inputmode="decimal" value="20.000,00">
+
+      <div id="composicaoMsg"></div>
+
+      <h3>Parâmetros do juros de obra</h3>
+
+      <label for="taxa">Taxa de juros <small>(% ao ano, nominal)</small></label>
+      <input id="taxa" type="number" min="0" step="0.01" value="7.66">
+
+      <label for="p0">Percentual de obra atual (%)</label>
+      <input id="p0" type="number" min="0" max="100" step="0.1" value="30">
+
+      <label for="meses">Meses restantes de obra</label>
+      <input id="meses" type="number" min="1" max="120" step="1" value="18">
+
+      <label for="tr">Taxa Referencial estimada <small>(% ao mês)</small></label>
+      <input id="tr" type="number" min="0" step="0.0001" value="0.17">
+
+      <button type="submit" class="primary">Calcular</button>
+      <div id="formMsg"></div>
+    </form>
+
+    <section class="card" id="result">
+      <p class="empty">Preencha os dados e clique em <strong>Calcular</strong>.</p>
+    </section>
+  </div>
+
+  <section class="card formula">
+    <h2>Como o cálculo é feito</h2>
+    <p>Durante a obra, o banco libera o financiamento à construtora conforme as medições. O comprador paga, todo mês,
+       os encargos sobre o <strong>saldo já liberado</strong> (não amortiza a dívida):</p>
+    <ol>
+      <li><strong>Progresso mensal (linear):</strong> <code>Δp = (100% − P<sub>0</sub>) ÷ meses restantes</code></li>
+      <li><strong>% de obra no mês m:</strong> <code>P<sub>m</sub> = P<sub>0</sub> + m × Δp</code></li>
+      <li><strong>Saldo liberado:</strong> <code>S<sub>m</sub> = Financiamento × P<sub>m</sub></code></li>
+      <li><strong>Juros:</strong> <code>J<sub>m</sub> = S<sub>m</sub> × (taxa anual nominal ÷ 12)</code></li>
+      <li><strong>Correção pela TR:</strong> <code>A<sub>m</sub> = S<sub>m</sub> × TR mensal</code></li>
+      <li><strong>Juros de obra:</strong> <code>JO<sub>m</sub> = J<sub>m</sub> + A<sub>m</sub></code></li>
+      <li><strong>Desembolso total mensal:</strong> <code>D<sub>m</sub> = JO<sub>m</sub> + parcela da entrada<sub>m</sub></code></li>
+    </ol>
+    <p class="sub" style="margin:0">Valores estimados, apenas para fins informativos. O valor exato depende do contrato,
+       do cronograma real de medições, da TR divulgada pelo Banco Central, de taxa de administração e seguros
+       (não incluídos nesta simulação) e das regras do agente financeiro.</p>
+  </section>
+</main>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const fmt = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const brl = v => 'R$ ' + fmt(v);
+  const pct = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+  const cents = v => Math.round(v * 100);
+  const igual = (a, b) => cents(a) === cents(b);
+
+  // "235.000,50" -> 235000.5 (ponto = milhar, vírgula = decimal)
+  function parseMoney(s) {
+    s = String(s).replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(s) || 0;
+  }
+  const money = id => parseMoney($(id).value);
+  const num = id => parseFloat(String($(id).value).replace(',', '.')) || 0;
+  const setMoney = (el, v) => { el.value = fmt(v); };
+
+  // Formata campos monetários ao sair do campo: 235000 -> 235.000,00
+  document.addEventListener('focusout', e => {
+    if (e.target.classList?.contains('money') && !e.target.readOnly) setMoney(e.target, parseMoney(e.target.value));
+  });
+  document.addEventListener('input', e => {
+    if (e.target.classList?.contains('money')) e.target.value = e.target.value.replace(/[^\d.,]/g, '');
+  });
+
+  // ---- Dados do negócio ----
+  function atualizarDesconto() {
+    setMoney($('desc'), Math.max(0, money('vi') - money('vid')));
+    validarComposicao();
+  }
+  $('tipo').addEventListener('change', () => {
+    const v = parseFloat($('tipo').value);
+    setMoney($('vi'), v);
+    setMoney($('vid'), v);
+    atualizarDesconto();
+  });
+  ['vi', 'vid'].forEach(id => $(id).addEventListener('input', atualizarDesconto));
+  ['fin', 'sub', 'fgts', 'rp'].forEach(id => $(id).addEventListener('input', validarComposicao));
+
+  function validarComposicao() {
+    const alvo = money('vi');
+    const composicao = money('fin') + money('sub') + money('fgts') + money('rp');
+    const desconto = money('desc');
+    const soma = composicao + desconto;
+    const box = $('composicaoMsg');
+    if (igual(soma, alvo)) {
+      box.innerHTML = `<div class="msg ok">Composição do pagamento (${brl(composicao)}) + desconto (${brl(desconto)})
+        fecham o valor do imóvel (${brl(alvo)}).</div>`;
+      return true;
+    }
+    const dif = alvo - soma;
+    box.innerHTML = `<div class="msg err">Composição do pagamento (${brl(composicao)}) + desconto (${brl(desconto)})
+      = <strong>${brl(soma)}</strong><br>
+      ${dif > 0 ? 'Faltam' : 'Excedem'} <strong>${brl(Math.abs(dif))}</strong> para o valor do imóvel (${brl(alvo)}).</div>`;
+    return false;
+  }
+
+  // ---- Cálculo ----
+  function simular(p) {
+    const iMes = p.taxa / 100 / 12;
+    const trMes = p.tr / 100;
+    const dp = (100 - p.p0) / p.meses;
+    const linhas = [];
+    for (let m = 1; m <= p.meses; m++) {
+      const perc = Math.min(100, p.p0 + m * dp);
+      const saldo = p.fin * perc / 100;
+      const juros = saldo * iMes;
+      const correcao = saldo * trMes;
+      linhas.push({ m, perc, saldo, juros, correcao, jo: juros + correcao });
+    }
+    return linhas;
+  }
+
+  let estado = null;           // { p, linhas, ato, parcelas[] }
+
+  function grafico(linhas, parcelas) {
+    const W = 640, H = 220, padL = 56, padB = 24, padT = 8;
+    const totais = linhas.map((l, i) => l.jo + parcelas[i]);
+    const max = Math.max(...totais) || 1;
+    const bw = (W - padL) / linhas.length;
+    const y = v => (H - padB) - (v / max) * (H - padB - padT);
+    let bars = '';
+    linhas.forEach((l, i) => {
+      const x = padL + i * bw + bw * 0.15, w = bw * 0.7;
+      let base = 0;
+      [[l.juros, 'var(--bar-juros)'], [l.correcao, 'var(--bar-tr)'], [parcelas[i], 'var(--bar-entrada)']].forEach(([v, c]) => {
+        if (v <= 0) return;
+        bars += `<rect x="${x}" y="${y(base + v)}" width="${w}" height="${y(base) - y(base + v)}" fill="${c}"><title>Mês ${l.m}: ${brl(totais[i])}</title></rect>`;
+        base += v;
+      });
+      if (linhas.length <= 24 || l.m % Math.ceil(linhas.length / 12) === 0)
+        bars += `<text x="${x + w / 2}" y="${H - 6}" font-size="10" text-anchor="middle" fill="var(--muted)">${l.m}</text>`;
+    });
+    let grid = '';
+    for (let k = 0; k <= 4; k++) {
+      const v = max * k / 4;
+      grid += `<line x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--border)"/>` +
+              `<text x="${padL - 6}" y="${y(v) + 4}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(v).toLocaleString('pt-BR')}</text>`;
+    }
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Desembolso total mensal">${grid}${bars}</svg>`;
+  }
+
+  function render() {
+    const { p, linhas } = estado;
+    $('result').innerHTML = `
+      <h2>Simulação</h2>
+      <div class="entrada-bar">
+        <div>
+          <label for="ato">Ato — recursos próprios (R$)</label>
+          <input id="ato" class="money" type="text" inputmode="decimal" value="${fmt(estado.ato)}">
+        </div>
+        <button type="button" class="secondary" id="distribuir">Distribuir restante nas parcelas</button>
+      </div>
+      <div id="entradaMsg"></div>
+      <div id="kpis" class="kpis"></div>
+      <div id="chart"></div>
+      <div class="legend">
+        <span><i style="background:var(--bar-juros)"></i>Juros</span>
+        <span><i style="background:var(--bar-tr)"></i>Correção TR</span>
+        <span><i style="background:var(--bar-entrada)"></i>Parcela da entrada</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mês</th><th>% obra</th><th>Saldo liberado</th><th>Juros</th><th>Correção TR</th>
+            <th>Juros de obra</th><th>Parcela da entrada</th><th>Desembolso total mensal</th></tr></thead>
+          <tbody>${linhas.map((l, i) => `<tr>
+            <td>${l.m}</td><td>${pct(l.perc)}</td><td>${brl(l.saldo)}</td><td>${brl(l.juros)}</td><td>${brl(l.correcao)}</td>
+            <td><strong>${brl(l.jo)}</strong></td>
+            <td><input class="money parcela" data-i="${i}" type="text" inputmode="decimal" value="${fmt(estado.parcelas[i])}"></td>
+            <td class="total" id="tot${i}"></td></tr>`).join('')}</tbody>
+          <tfoot><tr><td>Total</td><td></td><td></td><td id="fJ"></td><td id="fA"></td><td id="fJO"></td><td id="fP"></td><td id="fT"></td></tr></tfoot>
+        </table>
+      </div>`;
+
+    $('ato').addEventListener('input', () => { estado.ato = money('ato'); atualizarEntrada(); });
+    $('result').querySelectorAll('.parcela').forEach(el => el.addEventListener('input', () => {
+      estado.parcelas[+el.dataset.i] = parseMoney(el.value); atualizarEntrada();
+    }));
+    $('distribuir').addEventListener('click', distribuir);
+    atualizarEntrada();
+  }
+
+  // Divide (recursos próprios − ato) igualmente; centavos de arredondamento vão para a última parcela
+  function distribuir() {
+    const { p, linhas } = estado;
+    const restante = Math.max(0, cents(p.rp) - cents(estado.ato));
+    const base = Math.floor(restante / linhas.length);
+    estado.parcelas = linhas.map((_, i) => (i === linhas.length - 1 ? restante - base * (linhas.length - 1) : base) / 100);
+    $('result').querySelectorAll('.parcela').forEach(el => setMoney(el, estado.parcelas[+el.dataset.i]));
+    atualizarEntrada();
+  }
+
+  function atualizarEntrada() {
+    const { p, linhas, parcelas } = estado;
+    const soma = arr => arr.reduce((s, v) => s + v, 0);
+    linhas.forEach((l, i) => { $('tot' + i).textContent = brl(l.jo + parcelas[i]); });
+    const totJO = soma(linhas.map(l => l.jo)), totP = soma(parcelas);
+    $('fJ').textContent = brl(soma(linhas.map(l => l.juros)));
+    $('fA').textContent = brl(soma(linhas.map(l => l.correcao)));
+    $('fJO').textContent = brl(totJO);
+    $('fP').textContent = brl(totP);
+    $('fT').textContent = brl(totJO + totP);
+
+    const entrada = estado.ato + totP;
+    const dif = p.rp - entrada;
+    $('entradaMsg').innerHTML = igual(entrada, p.rp)
+      ? `<div class="msg ok">Ato + parcelas fecham os recursos próprios (${brl(p.rp)}).</div>`
+      : `<div class="msg err">Ato (${brl(estado.ato)}) + parcelas (${brl(totP)}) = <strong>${brl(entrada)}</strong>.
+         ${dif > 0 ? 'Faltam' : 'Excedem'} <strong>${brl(Math.abs(dif))}</strong> para os recursos próprios (${brl(p.rp)}).</div>`;
+
+    const mensais = linhas.map((l, i) => l.jo + parcelas[i]);
+    $('kpis').innerHTML = `
+      <div class="kpi"><span>Maior desembolso mensal</span><strong>${brl(Math.max(...mensais))}</strong></div>
+      <div class="kpi"><span>Média mensal</span><strong>${brl(soma(mensais) / mensais.length)}</strong></div>
+      <div class="kpi"><span>Total juros de obra</span><strong>${brl(totJO)}</strong></div>
+      <div class="kpi"><span>Total na fase de obra (c/ ato)</span><strong>${brl(totJO + totP + estado.ato)}</strong></div>`;
+    $('chart').innerHTML = grafico(linhas, parcelas);
+  }
+
+  $('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const p = {
+      fin: money('fin'), rp: money('rp'), taxa: num('taxa'),
+      p0: Math.min(100, Math.max(0, num('p0'))), meses: Math.max(1, Math.round(num('meses'))), tr: num('tr'),
+    };
+    const erros = [];
+    if (!validarComposicao()) erros.push('A soma de financiamento, subsídio, FGTS, recursos próprios e desconto precisa ser igual ao valor do imóvel.');
+    if (p.fin <= 0) erros.push('Informe o valor do financiamento.');
+    if (erros.length) {
+      $('formMsg').innerHTML = `<div class="msg err">${erros.join('<br>')}</div>`;
+      return;
+    }
+    $('formMsg').innerHTML = '';
+    // Mantém ato e parcelas já digitados ao recalcular
+    const antigo = estado;
+    estado = {
+      p, linhas: simular(p),
+      ato: antigo ? antigo.ato : 0,
+      parcelas: Array.from({ length: p.meses }, (_, i) => antigo?.parcelas[i] ?? 0),
+    };
+    render();
+  });
+
+  atualizarDesconto();
+</script>
+</body>
+</html>
