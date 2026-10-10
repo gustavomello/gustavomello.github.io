@@ -4,11 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador Juros de Obra</title>
+<script src="empreendimentos.js"></script>
 <style>
   :root {
     --bg: #f5f7fa; --card: #ffffff; --text: #1d2733; --muted: #5f6b7a;
     --border: #dde3ea; --accent: #0b6bcb; --accent-soft: #e6f0fb;
-    --bar-juros: #0b6bcb; --bar-tr: #f0a020; --bar-entrada: #2e9e6a;
+    --bar-juros: #0b6bcb; --bar-entrada: #2e9e6a;
     --warn-bg: #fff6e0; --warn-text: #7a5300;
     --err-bg: #fdecec; --err-text: #a12020;
     --ok-bg: #e7f6ee; --ok-text: #1d6b45;
@@ -17,7 +18,7 @@
     :root {
       --bg: #11161c; --card: #1a212a; --text: #e6ebf0; --muted: #9aa6b4;
       --border: #2c3640; --accent: #4ea1f0; --accent-soft: #1d3147;
-      --bar-juros: #4ea1f0; --bar-tr: #f2b44a; --bar-entrada: #4cc38a;
+      --bar-juros: #4ea1f0; --bar-entrada: #4cc38a;
       --warn-bg: #3a2f12; --warn-text: #f4d58d;
       --err-bg: #3d1c1c; --err-text: #f5a3a3;
       --ok-bg: #16352a; --ok-text: #8fe0b8;
@@ -39,6 +40,7 @@
   input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px;
           background: var(--bg); color: var(--text); font-size: 1rem; font-family: inherit; }
   input.money { text-align: right; font-variant-numeric: tabular-nums; }
+  input:disabled { opacity: .4; }
   input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   button.primary { width: 100%; margin-top: 18px; padding: 12px; border: none; border-radius: 8px;
                    background: var(--accent); color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
@@ -54,7 +56,8 @@
   .kpi span { display: block; font-size: .8rem; color: var(--muted); }
   .kpi strong { font-size: 1.25rem; }
   .entrada-bar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 4px; }
-  .entrada-bar > div { flex: 1 1 200px; }
+  .entrada-bar > div { flex: 1 1 180px; }
+  .entrada-bar > div.curto { flex: 0 1 150px; }
   .entrada-bar label { margin-top: 0; }
   .legend { display: flex; gap: 16px; font-size: .85rem; color: var(--muted); margin: 6px 0 20px; flex-wrap: wrap; }
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
@@ -66,10 +69,80 @@
   td input.money { width: 130px; padding: 5px 8px; font-size: .9rem; }
   td.total { font-weight: 700; color: var(--accent); }
   tfoot td { font-weight: 700; border-top: 2px solid var(--border); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
   .formula { margin-top: 20px; }
   .formula code { background: var(--bg); padding: 2px 6px; border-radius: 4px; }
   .formula li { margin-bottom: 6px; }
   .empty { color: var(--muted); text-align: center; padding: 40px 0; }
+
+  /* ---- Relatório A4 ---- */
+  #modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); overflow: auto; z-index: 10; padding: 16px; }
+  #modal[hidden] { display: none; }
+  .modal-acoes { display: flex; gap: 10px; justify-content: center; margin-bottom: 12px; }
+  .modal-acoes button { width: auto; margin: 0; padding: 10px 18px; }
+  .modal-acoes .secondary { background: #fff; }
+  .folha { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 12mm 13mm; background: #fff; color: #111;
+           font: 12pt/1.3 Arial, Helvetica, sans-serif; box-shadow: 0 4px 24px rgba(0,0,0,.3); }
+  .folha h1 { font-size: 16pt; margin: 0; }
+  .folha .titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+                   border-bottom: 2px solid #111; padding-bottom: 4px; margin-bottom: 6px; }
+  .folha .titulo p { margin: 0; color: #444; }
+  .folha .titulo .dir { text-align: right; }
+  .folha .blocos { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin-bottom: 6px; }
+  .folha .bloco.largo { grid-column: 1 / -1; }
+  .folha .bloco .pares { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }
+  .folha .bloco .pares span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .folha .bloco { border: 1px solid #bbb; border-radius: 4px; padding: 3px 7px; }
+  .folha .bloco h4 { margin: 0 0 2px; font-size: 12pt; text-transform: uppercase; letter-spacing: .03em; color: #444; }
+  .folha .bloco div:not(.pares) { display: flex; justify-content: space-between; gap: 6px; }
+  .folha .bloco div span:last-child { white-space: nowrap; }
+  .folha .bloco div span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .folha .partes { margin-bottom: 8px; }
+  .folha table { font-size: 12pt; line-height: 1.15; }
+  .folha .titulo, .folha .blocos { line-height: 1.2; }
+  .folha th, .folha td { padding: 1px 6px; border-bottom: 1px solid #ddd; color: #111; }
+  .folha th { background: #eee; color: #111; }
+  .folha td.total { color: #111; }
+  .folha tfoot td { border-top: 1.5px solid #111; }
+  .folha tr.ato td { background: #f6f6f6; }
+  .folha .aviso { color: #444; margin: 6px 0 0; text-align: justify; }
+  .folha .data-local { margin: 18px 0 0; text-align: right; }
+  .folha .assinaturas { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 30px; margin-top: 30px; }
+  .folha .assinaturas div { border-top: 1px solid #111; padding-top: 3px; text-align: center; }
+  .folha .assinaturas small { display: block; color: #555; }
+  .folha + .folha { margin-top: 16px; }
+  /* Folhas com altura fixa: a paginação das condições gerais mede o que cabe em cada uma */
+  #modal .folha { height: 296mm; min-height: 0; overflow: hidden; }
+  .folha.verso { padding-top: 10mm; padding-bottom: 10mm; }
+  .folha .cond-janela { overflow: hidden; }
+  .folha #janVerso { height: 100%; }
+  .folha .cond-janela > .condicoes { display: flow-root; } /* evita que margens internas vazem e desalinhem o corte */
+  .folha .condicoes { line-height: 1.3; }
+  .folha .cond-titulo { font-size: 1.05em; text-transform: uppercase; margin: 6px 0 4px; padding-top: 4px; border-top: 1.5px solid #111; }
+  .folha .cond { display: flex; gap: .4em; margin-bottom: .15em; text-align: justify; }
+  .folha .cond .num { flex: none; min-width: 1.4em; font-weight: 700; }
+  .folha .cond.n1 { padding-left: 1.8em; }
+  .folha .cond.n1 .num { min-width: 1.9em; }
+  .folha .cond.n2 { padding-left: 4.1em; }
+  .folha .cond.n2 .num { min-width: 2.6em; }
+  .folha .obs { margin: .3em 0 0; text-align: justify; }
+  .folha .destaque { margin: .6em 0 0; padding: 5px 10px; border: 1.5px solid #111; font-weight: 700; text-align: center;
+                     font-size: .85em; text-wrap: balance; } /* frase sem fim jurídico: fonte menor para caber em 3 linhas */
+  .folha .condicoes .data-local { margin-top: 1em; }
+  .folha .condicoes .assinaturas { margin-top: 1.8em; row-gap: 1.6em; }
+  .folha.compacta table { font-size: 7.5pt; }
+  .folha.compacta th, .folha.compacta td { padding: 1.5px 5px; }
+
+  @media print {
+    @page { size: A4; margin: 0; }
+    body { background: #fff; }
+    body > *:not(#modal) { display: none !important; }
+    #modal { position: static; background: none; padding: 0; overflow: visible; }
+    .modal-acoes { display: none; }
+    .folha { box-shadow: none; margin: 0; }
+    .folha + .folha { margin-top: 0; break-before: page; }
+  }
 </style>
 </head>
 <body>
@@ -79,22 +152,27 @@
 
   <div class="layout">
     <form id="form" class="card" novalidate>
-      <h2>Dados do negócio</h2>
+      <h2>Empreendimento</h2>
+
+      <label for="emp">Empreendimento</label>
+      <select id="emp"></select>
+      <div id="empMsg"></div>
+
+      <label for="unidade">Unidade <small>(ex.: 104 A)</small></label>
+      <input id="unidade" type="text" autocomplete="off">
+
+      <h3>Dados do negócio</h3>
 
       <label for="tipo">Tipo de unidade</label>
-      <select id="tipo">
-        <option value="235000">Com sacada</option>
-        <option value="230000">Sem sacada</option>
-        <option value="230000">PNE</option>
-      </select>
+      <select id="tipo"></select>
 
       <label for="vi">Valor do imóvel (R$)</label>
-      <input id="vi" class="money" type="text" inputmode="decimal" value="235.000,00">
+      <input id="vi" class="money" type="text" inputmode="decimal">
 
       <label for="vid">Valor do imóvel com desconto (R$)</label>
-      <input id="vid" class="money" type="text" inputmode="decimal" value="235.000,00">
+      <input id="vid" class="money" type="text" inputmode="decimal">
 
-      <label for="desc">Valor do desconto (R$)</label>
+      <label for="desc">Valor do desconto* (R$) <small>(* condições no verso do relatório)</small></label>
       <input id="desc" class="money" type="text" value="0,00" readonly tabindex="-1">
 
       <h3>Composição do pagamento</h3>
@@ -116,16 +194,25 @@
       <h3>Parâmetros do juros de obra</h3>
 
       <label for="taxa">Taxa de juros <small>(% ao ano, nominal)</small></label>
-      <input id="taxa" type="number" min="0" step="0.01" value="7.66">
-
-      <label for="p0">Percentual de obra atual (%)</label>
-      <input id="p0" type="number" min="0" max="100" step="0.1" value="30">
-
-      <label for="meses">Meses restantes de obra</label>
-      <input id="meses" type="number" min="1" max="120" step="1" value="18">
+      <input id="taxa" type="number" min="0" step="0.01" value="5.5">
 
       <label for="tr">Taxa Referencial estimada <small>(% ao mês)</small></label>
       <input id="tr" type="number" min="0" step="0.0001" value="0.17">
+
+      <label for="p0">Percentual de obra atual (%) <small>(do empreendimento)</small></label>
+      <input id="p0" type="text" readonly tabindex="-1">
+
+      <label for="meses">Meses restantes de obra <small id="entregaLbl"></small></label>
+      <input id="meses" type="text" readonly tabindex="-1">
+
+      <h3>Financiamento após a entrega</h3>
+
+      <label for="prazoAm">Prazo de amortização <small>(meses)</small></label>
+      <input id="prazoAm" type="number" min="1" max="420" step="1" value="420">
+
+      <label for="prest">1ª prestação do financiamento (R$) <small>(simulador Caixa)</small></label>
+      <input id="prest" class="money" type="text" inputmode="decimal" placeholder="0,00">
+      <div id="prestMsg"></div>
 
       <button type="submit" class="primary">Calcular</button>
       <div id="formMsg"></div>
@@ -138,30 +225,55 @@
 
   <section class="card formula">
     <h2>Como o cálculo é feito</h2>
-    <p>Durante a obra, o banco libera o financiamento à construtora conforme as medições. O comprador paga, todo mês,
-       os encargos sobre o <strong>saldo já liberado</strong> (não amortiza a dívida):</p>
+    <p>Durante a obra, a Caixa libera os recursos à construtora: a <strong>cota terreno</strong> no primeiro mês e o
+       restante conforme as medições. Cada liberação é dividida proporcionalmente entre financiamento, subsídio e FGTS,
+       e o comprador paga, todo mês, os encargos apenas sobre a <strong>parte do financiamento já liberada</strong>
+       (não amortiza a dívida). O ato é pago no mês da assinatura; o primeiro juros de obra e a primeira parcela da
+       entrada vencem no mês seguinte.</p>
     <ol>
+      <li><strong>Meses restantes:</strong> do mês seguinte ao atual até o mês de entrega, inclusive</li>
       <li><strong>Progresso mensal (linear):</strong> <code>Δp = (100% − P<sub>0</sub>) ÷ meses restantes</code></li>
       <li><strong>% de obra no mês m:</strong> <code>P<sub>m</sub> = P<sub>0</sub> + m × Δp</code></li>
-      <li><strong>Saldo liberado:</strong> <code>S<sub>m</sub> = Financiamento × P<sub>m</sub></code></li>
+      <li><strong>Recursos da Caixa:</strong> <code>T = Financiamento + Subsídio + FGTS</code></li>
+      <li><strong>Saldo do financiamento liberado:</strong> <code>S<sub>m</sub> = (Financiamento ÷ T) × [Cota terreno + (T − Cota terreno) × P<sub>m</sub>]</code></li>
       <li><strong>Juros:</strong> <code>J<sub>m</sub> = S<sub>m</sub> × (taxa anual nominal ÷ 12)</code></li>
       <li><strong>Correção pela TR:</strong> <code>A<sub>m</sub> = S<sub>m</sub> × TR mensal</code></li>
       <li><strong>Juros de obra:</strong> <code>JO<sub>m</sub> = J<sub>m</sub> + A<sub>m</sub></code></li>
       <li><strong>Desembolso total mensal:</strong> <code>D<sub>m</sub> = JO<sub>m</sub> + parcela da entrada<sub>m</sub></code></li>
     </ol>
-    <p class="sub" style="margin:0">Valores estimados, apenas para fins informativos. O valor exato depende do contrato,
-       do cronograma real de medições, da TR divulgada pelo Banco Central, de taxa de administração e seguros
-       (não incluídos nesta simulação) e das regras do agente financeiro.</p>
+    <p class="sub" style="margin:0" id="avisoTexto">Valores estimados, apenas para fins informativos. O valor exato depende do contrato,
+       do cronograma real de medições, da TR divulgada pelo Banco Central, dos seguros (não incluídos nesta
+       simulação) e das regras do agente financeiro.</p>
   </section>
 </main>
+
+<div id="modal" hidden>
+  <div class="modal-acoes">
+    <button type="button" class="primary" id="imprimir">Imprimir / Salvar PDF</button>
+    <button type="button" class="secondary" id="fecharModal">Fechar</button>
+    <span id="relFonte" style="color:#fff;align-self:center"></span>
+  </div>
+  <div class="folha" id="folha"></div>
+  <div class="folha verso" id="verso"></div>
+</div>
 
 <script>
   const $ = id => document.getElementById(id);
   const fmt = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const brl = v => 'R$ ' + fmt(v);
-  const pct = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+  const pct = (v, casas = 1) => v.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }) + '%';
   const cents = v => Math.round(v * 100);
   const igual = (a, b) => cents(a) === cents(b);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const HOJE = new Date();
+  // Data do mês m (0 = mês atual / ato, 1 = mês seguinte...)
+  const dataMes = m => { const d = new Date(HOJE.getFullYear(), HOJE.getMonth() + m, 1); return `${MESES[d.getMonth()]}/${d.getFullYear()}`; };
+  const fmtEntrega = s => { const [a, m] = s.split('-').map(Number); return `${MESES[m - 1]}/${a}`; };
+  const fmtMesExtenso = s => { const [a, m] = s.split('-').map(Number); return new Date(a, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }); };
+  // Meses do mês seguinte ao atual até o mês de entrega, inclusive
+  const mesesAte = s => { const [a, m] = s.split('-').map(Number); return (a * 12 + m - 1) - (HOJE.getFullYear() * 12 + HOJE.getMonth()); };
 
   // "235.000,50" -> 235000.5 (ponto = milhar, vírgula = decimal)
   function parseMoney(s) {
@@ -180,17 +292,44 @@
     if (e.target.classList?.contains('money')) e.target.value = e.target.value.replace(/[^\d.,]/g, '');
   });
 
+  // Enter avança para o próximo campo (em vez de enviar o formulário); em botões, mantém o clique
+  document.addEventListener('keydown', e => {
+    const el = e.target;
+    if (e.key !== 'Enter' || !el.matches?.('input, select')) return;
+    e.preventDefault();
+    const campos = [...document.querySelectorAll('input, select, button')]
+      .filter(c => !c.disabled && !c.readOnly && c.tabIndex >= 0 && c.offsetParent !== null && !c.closest('#modal'));
+    const prox = campos[campos.indexOf(el) + 1];
+    if (prox) { prox.focus(); if (prox.select && prox.tagName === 'INPUT') prox.select(); }
+  });
+
+  // ---- Empreendimento ----
+  const EMPS = window.EMPREENDIMENTOS || [];
+  const empAtual = () => EMPS[+$('emp').value];
+
+  $('emp').innerHTML = EMPS.map((e, i) => `<option value="${i}">${esc(e.nome)}</option>`).join('');
+  function carregarEmpreendimento() {
+    const e = empAtual();
+    $('tipo').innerHTML = e.tipos.map((t, i) => `<option value="${i}">${esc(t.nome)}</option>`).join('');
+    $('p0').value = pct(e.percentualObra, 2);
+    $('meses').value = mesesAte(e.entrega);
+    $('entregaLbl').textContent = `(entrega ${fmtEntrega(e.entrega)})`;
+    carregarTipo();
+  }
+  function carregarTipo() {
+    const v = empAtual().tipos[+$('tipo').value].valor;
+    setMoney($('vi'), v);
+    setMoney($('vid'), v);
+    atualizarDesconto();
+  }
+  $('emp').addEventListener('change', carregarEmpreendimento);
+  $('tipo').addEventListener('change', carregarTipo);
+
   // ---- Dados do negócio ----
   function atualizarDesconto() {
     setMoney($('desc'), Math.max(0, money('vi') - money('vid')));
     validarComposicao();
   }
-  $('tipo').addEventListener('change', () => {
-    const v = parseFloat($('tipo').value);
-    setMoney($('vi'), v);
-    setMoney($('vid'), v);
-    atualizarDesconto();
-  });
   ['vi', 'vid'].forEach(id => $(id).addEventListener('input', atualizarDesconto));
   ['fin', 'sub', 'fgts', 'rp'].forEach(id => $(id).addEventListener('input', validarComposicao));
 
@@ -212,23 +351,49 @@
     return false;
   }
 
+  // ---- Prestação após a entrega ----
+  // Estimativa PRICE (amortização + juros, sem seguros) sobre o financiamento, para conferir o valor do simulador Caixa
+  const TOLERANCIA_PREST = 0.10;
+  function estimarPrestacao(fin, taxa, n) {
+    const i = taxa / 100 / 12;
+    if (fin <= 0 || n < 1) return 0;
+    return i ? fin * i / (1 - Math.pow(1 + i, -n)) : fin / n;
+  }
+  function validarPrestacao() {
+    const est = estimarPrestacao(money('fin'), num('taxa'), Math.round(num('prazoAm')));
+    const prest = money('prest');
+    const box = $('prestMsg');
+    // Só avisa quando o valor informado foge da estimativa
+    const dif = prest && est ? (prest - est) / est : 0;
+    box.innerHTML = Math.abs(dif) > TOLERANCIA_PREST
+      ? `<div class="msg err">Valor ${dif > 0 ? 'acima' : 'abaixo'} da estimativa em <strong>${pct(Math.abs(dif) * 100)}</strong>
+         (estimado ${brl(est)}, PRICE sem seguros). Confira financiamento, taxa e prazo.</div>`
+      : '';
+  }
+  ['fin', 'taxa', 'prazoAm', 'prest'].forEach(id => $(id).addEventListener('input', validarPrestacao));
+  $('prest').addEventListener('focusout', validarPrestacao);
+
   // ---- Cálculo ----
   function simular(p) {
     const iMes = p.taxa / 100 / 12;
     const trMes = p.tr / 100;
     const dp = (100 - p.p0) / p.meses;
+    // Cota terreno e obra são liberadas proporcionalmente entre financiamento, subsídio e FGTS;
+    // só a parcela do financiamento gera juros de obra
+    const total = p.fin + p.sub + p.fgts;
+    const fracFin = p.fin / total;
     const linhas = [];
     for (let m = 1; m <= p.meses; m++) {
       const perc = Math.min(100, p.p0 + m * dp);
-      const saldo = p.fin * perc / 100;
+      const saldo = fracFin * (p.cota + (total - p.cota) * perc / 100);
       const juros = saldo * iMes;
       const correcao = saldo * trMes;
-      linhas.push({ m, perc, saldo, juros, correcao, jo: juros + correcao });
+      linhas.push({ m, data: dataMes(m), perc, saldo, juros, correcao, jo: juros + correcao });
     }
     return linhas;
   }
 
-  let estado = null;           // { p, linhas, ato, parcelas[] }
+  let estado = null;           // { p, linhas, ato, prazo, parcelas[] }
 
   function grafico(linhas, parcelas) {
     const W = 640, H = 220, padL = 56, padB = 24, padT = 8;
@@ -238,7 +403,7 @@
     let bars = '';
     linhas.forEach((l, i) => {
       const x = padL + i * bw + bw * 0.15, w = bw * 0.7, pe = parcelas[i];
-      const dica = `Mês ${l.m} — Juros de obra: ${brl(l.jo)} | Entrada: ${brl(pe)} | Total: ${brl(l.jo + pe)}`;
+      const dica = `${l.data} — Juros de obra: ${brl(l.jo)} | Entrada: ${brl(pe)} | Total: ${brl(l.jo + pe)}`;
       bars += `<rect x="${x}" y="${y(l.jo)}" width="${w}" height="${y(0) - y(l.jo)}" fill="var(--bar-juros)"><title>${dica}</title></rect>`;
       if (pe > 0)
         bars += `<rect x="${x}" y="${y(l.jo + pe)}" width="${w}" height="${y(l.jo) - y(l.jo + pe)}" fill="var(--bar-entrada)"><title>${dica}</title></rect>`;
@@ -255,14 +420,20 @@
   }
 
   function render() {
-    const { p, linhas } = estado;
+    const { linhas } = estado;
     $('result').innerHTML = `
       <h2>Simulação</h2>
       <div class="entrada-bar">
         <div>
-          <label for="ato">Ato — recursos próprios (R$)</label>
+          <label for="ato">Ato — recursos próprios (R$) <small>${dataMes(0)}</small></label>
           <input id="ato" class="money" type="text" inputmode="decimal" value="${fmt(estado.ato)}">
         </div>
+        <div class="curto">
+          <label for="prazo">Prazo máx. entrada <small>(meses)</small></label>
+          <input id="prazo" type="number" min="1" max="${linhas.length}" step="1" value="${estado.prazo}">
+        </div>
+      </div>
+      <div class="entrada-bar" style="margin-top:10px">
         <button type="button" class="secondary" id="distribuir">Distribuir restante nas parcelas</button>
         <button type="button" class="secondary" id="distribuirDec">Parcelas decrescentes (desembolso constante)</button>
       </div>
@@ -276,36 +447,81 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Mês</th><th>% obra</th><th>Juros de obra</th><th>Parcela da entrada</th><th>Desembolso total mensal</th></tr></thead>
+          <thead><tr><th>Mês</th><th>Vencimento</th><th>% obra</th><th>Juros de obra</th><th>Parcela da entrada</th><th>Desembolso total mensal</th></tr></thead>
           <tbody>${linhas.map((l, i) => `<tr>
-            <td>${l.m}</td><td>${pct(l.perc)}</td><td>${brl(l.jo)}</td>
+            <td>${l.m}</td><td>${l.data}</td><td>${pct(l.perc)}</td><td>${brl(l.jo)}</td>
             <td><input class="money parcela" data-i="${i}" type="text" inputmode="decimal" value="${fmt(estado.parcelas[i])}"></td>
             <td class="total" id="tot${i}"></td></tr>`).join('')}</tbody>
-          <tfoot><tr><td>Total</td><td></td><td id="fJO"></td><td id="fP"></td><td id="fT"></td></tr></tfoot>
+          <tfoot><tr><td>Total</td><td></td><td></td><td id="fJO"></td><td id="fP"></td><td id="fT"></td></tr></tfoot>
         </table>
-      </div>`;
+      </div>
+
+      <h3>Relatório</h3>
+      <div class="grid2">
+        <div><label for="comp1">Comprador 1</label><input id="comp1" type="text" value="${esc(estado.nomes.comp1)}"></div>
+        <div><label for="comp2">Comprador 2 <small>(opcional)</small></label><input id="comp2" type="text" value="${esc(estado.nomes.comp2)}"></div>
+        <div><label for="aval1">Avalista 1 <small>(opcional)</small></label><input id="aval1" type="text" value="${esc(estado.nomes.aval1)}"></div>
+        <div><label for="aval2">Avalista 2 <small>(opcional)</small></label><input id="aval2" type="text" value="${esc(estado.nomes.aval2)}"></div>
+        <div><label for="fone">Telefone comprador 1</label><input id="fone" class="fone" type="tel" value="${esc(estado.nomes.fone)}"></div>
+        <div><label for="fone2">Telefone comprador 2 <small>(se houver)</small></label><input id="fone2" class="fone" type="tel" value="${esc(estado.nomes.fone2)}"></div>
+        <div><label for="ref1">Referência 1 <small>(nome / parentesco)</small></label><input id="ref1" type="text" value="${esc(estado.nomes.ref1)}"></div>
+        <div><label for="ref1fone">Telefone referência 1</label><input id="ref1fone" class="fone" type="tel" value="${esc(estado.nomes.ref1fone)}"></div>
+        <div><label for="ref2">Referência 2 <small>(nome / parentesco)</small></label><input id="ref2" type="text" value="${esc(estado.nomes.ref2)}"></div>
+        <div><label for="ref2fone">Telefone referência 2</label><input id="ref2fone" class="fone" type="tel" value="${esc(estado.nomes.ref2fone)}"></div>
+      </div>
+      <button type="button" class="primary" id="gerar">Gerar relatório A4</button>
+      <div id="relMsg"></div>`;
 
     $('ato').addEventListener('input', () => { estado.ato = money('ato'); atualizarEntrada(); });
+    $('prazo').addEventListener('change', () => {
+      estado.prazo = Math.min(linhas.length, Math.max(1, Math.round(num('prazo')) || linhas.length));
+      $('prazo').value = estado.prazo;
+      aplicarPrazo();
+    });
     $('result').querySelectorAll('.parcela').forEach(el => el.addEventListener('input', () => {
       estado.parcelas[+el.dataset.i] = parseMoney(el.value); $('distMsg').innerHTML = ''; atualizarEntrada();
     }));
+    CAMPOS_RELATORIO.forEach(id => $(id).addEventListener('input', () => { estado.nomes[id] = $(id).value; }));
     $('distribuir').addEventListener('click', distribuir);
     $('distribuirDec').addEventListener('click', distribuirDecrescente);
+    $('gerar').addEventListener('click', gerarRelatorio);
+    aplicarPrazo();
+  }
+
+  // Meses após o prazo máximo não têm parcela da entrada
+  function aplicarPrazo() {
+    $('result').querySelectorAll('.parcela').forEach(el => {
+      const i = +el.dataset.i, fora = i >= estado.prazo;
+      el.disabled = fora;
+      if (fora) { estado.parcelas[i] = 0; setMoney(el, 0); }
+    });
     atualizarEntrada();
   }
+
+  // Campos preenchidos só para o relatório (não afetam o cálculo)
+  const CAMPOS_RELATORIO = ['comp1', 'comp2', 'aval1', 'aval2', 'fone', 'fone2', 'ref1', 'ref1fone', 'ref2', 'ref2fone'];
+
+  // Telefone: (53) 99999-9999 ou (53) 3333-3333
+  document.addEventListener('input', e => {
+    if (!e.target.classList?.contains('fone')) return;
+    const d = e.target.value.replace(/\D/g, '').slice(0, 11);
+    e.target.value = d.length > 10 ? d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3')
+      : d.length > 6 ? d.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3')
+      : d.length > 2 ? d.replace(/(\d{2})(\d+)/, '($1) $2') : d;
+  }, true);
 
   const PARCELA_MIN = 20000;   // R$ 200,00 em centavos
   const MAX_VALORES = 4;       // valores distintos de parcela permitidos no contrato
 
   function aplicarParcelas(centavos) {
-    estado.parcelas = centavos.map(c => c / 100);
+    estado.parcelas = estado.linhas.map((_, i) => (centavos[i] || 0) / 100);
     $('result').querySelectorAll('.parcela').forEach(el => setMoney(el, estado.parcelas[+el.dataset.i]));
     atualizarEntrada();
   }
 
   // Restante a parcelar em centavos, ou null (com mensagem) se não couber o mínimo por parcela
   function restanteParcelar() {
-    const n = estado.linhas.length;
+    const n = estado.prazo;
     const restante = cents(estado.p.rp) - cents(estado.ato);
     if (restante < 0) {
       $('distMsg').innerHTML = `<div class="msg err">O ato é maior que os recursos próprios.</div>`;
@@ -313,36 +529,37 @@
     }
     if (restante > 0 && restante < PARCELA_MIN * n) {
       $('distMsg').innerHTML = `<div class="msg err">O restante (${brl(restante / 100)}) não permite ${n} parcelas de no mínimo
-        ${brl(PARCELA_MIN / 100)} (seriam necessários ${brl(PARCELA_MIN * n / 100)}). Reduza o ato.</div>`;
+        ${brl(PARCELA_MIN / 100)} (seriam necessários ${brl(PARCELA_MIN * n / 100)}). Reduza o ato ou o prazo.</div>`;
       return null;
     }
     return restante;
   }
 
-  // Divide (recursos próprios − ato) igualmente; centavos de arredondamento vão para a última parcela
+  // Divide (recursos próprios − ato) igualmente no prazo; centavos de arredondamento vão para a última parcela
   function distribuir() {
-    const n = estado.linhas.length;
+    const n = estado.prazo;
     const restante = restanteParcelar();
     if (restante === null) return;
     const base = Math.floor(restante / n);
     $('distMsg').innerHTML = '';
-    aplicarParcelas(estado.linhas.map((_, i) => i === n - 1 ? restante - base * (n - 1) : base));
+    aplicarParcelas(Array.from({ length: n }, (_, i) => i === n - 1 ? restante - base * (n - 1) : base));
   }
 
   /*
    * Parcelas decrescentes com até 4 valores distintos, deixando o desembolso (juros de obra + parcela)
-   * o mais constante possível. Os meses são divididos em até 4 blocos consecutivos, cada um com um valor.
-   * Para um conjunto de blocos, o valor ótimo de cada bloco é v_k = C − média(juros de obra do bloco),
-   * com C ajustado para a soma bater com o restante; blocos que ficariam abaixo do mínimo são fixados no
-   * mínimo e C é recalculado. Testa todas as divisões e fica com a de menor variância do desembolso.
+   * o mais constante possível dentro do prazo da entrada. Os meses são divididos em até 4 blocos
+   * consecutivos, cada um com um valor. Para um conjunto de blocos, o valor ótimo de cada bloco é
+   * v_k = C − média(juros de obra do bloco), com C ajustado para a soma bater com o restante; blocos que
+   * ficariam abaixo do mínimo são fixados no mínimo e C é recalculado. Testa todas as divisões e fica
+   * com a de menor variância do desembolso.
    */
   function distribuirDecrescente() {
-    const n = estado.linhas.length;
+    const n = estado.prazo;
     const R = restanteParcelar();
     if (R === null) return;
-    if (R === 0) { $('distMsg').innerHTML = ''; aplicarParcelas(Array(n).fill(0)); return; }
+    if (R === 0) { $('distMsg').innerHTML = ''; aplicarParcelas([]); return; }
 
-    const jo = estado.linhas.map(l => l.jo * 100);
+    const jo = estado.linhas.slice(0, n).map(l => l.jo * 100);
     const P1 = [0], P2 = [0];
     jo.forEach((v, i) => { P1.push(P1[i] + v); P2.push(P2[i] + v * v); });
 
@@ -417,6 +634,22 @@
     $('distMsg').innerHTML = `<div class="msg err">Não foi possível encontrar parcelas decrescentes que fechem o valor exato.</div>`;
   }
 
+  // Retorna lista de problemas da entrada (vazia = ok)
+  function problemasEntrada() {
+    const { p, parcelas } = estado;
+    const totP = parcelas.reduce((s, v) => s + v, 0);
+    const entrada = estado.ato + totP;
+    const dif = p.rp - entrada;
+    const abaixoMin = totP > 0 ? parcelas.slice(0, estado.prazo).filter(v => cents(v) < PARCELA_MIN).length : 0;
+    const msgs = [];
+    if (!igual(entrada, p.rp))
+      msgs.push(`Ato (${brl(estado.ato)}) + parcelas (${brl(totP)}) = <strong>${brl(entrada)}</strong>.
+         ${dif > 0 ? 'Faltam' : 'Excedem'} <strong>${brl(Math.abs(dif))}</strong> para os recursos próprios (${brl(p.rp)}).`);
+    if (abaixoMin)
+      msgs.push(`${abaixoMin} parcela(s) abaixo do mínimo de ${brl(PARCELA_MIN / 100)}.`);
+    return msgs;
+  }
+
   function atualizarEntrada() {
     const { p, linhas, parcelas } = estado;
     const soma = arr => arr.reduce((s, v) => s + v, 0);
@@ -426,53 +659,233 @@
     $('fP').textContent = brl(totP);
     $('fT').textContent = brl(totJO + totP);
 
-    const entrada = estado.ato + totP;
-    const dif = p.rp - entrada;
-    const abaixoMin = totP > 0 ? parcelas.filter(v => cents(v) < PARCELA_MIN).length : 0;
-    const msgs = [];
-    if (!igual(entrada, p.rp))
-      msgs.push(`Ato (${brl(estado.ato)}) + parcelas (${brl(totP)}) = <strong>${brl(entrada)}</strong>.
-         ${dif > 0 ? 'Faltam' : 'Excedem'} <strong>${brl(Math.abs(dif))}</strong> para os recursos próprios (${brl(p.rp)}).`);
-    if (abaixoMin)
-      msgs.push(`${abaixoMin} parcela(s) abaixo do mínimo de ${brl(PARCELA_MIN / 100)}.`);
+    const msgs = problemasEntrada();
     $('entradaMsg').innerHTML = msgs.length
       ? `<div class="msg err">${msgs.join('<br>')}</div>`
       : `<div class="msg ok">Ato + parcelas fecham os recursos próprios (${brl(p.rp)}).</div>`;
 
     const mensais = linhas.map((l, i) => l.jo + parcelas[i]);
     $('kpis').innerHTML = `
-      <div class="kpi"><span>Maior desembolso mensal</span><strong>${brl(Math.max(...mensais))}</strong></div>
-      <div class="kpi"><span>Média mensal</span><strong>${brl(soma(mensais) / mensais.length)}</strong></div>
-      <div class="kpi"><span>Total juros de obra</span><strong>${brl(totJO)}</strong></div>
-      <div class="kpi"><span>Total na fase de obra (c/ ato)</span><strong>${brl(totJO + totP + estado.ato)}</strong></div>`;
+      <div class="kpi"><span>Média do desembolso mensal</span><strong>${brl(soma(mensais) / mensais.length)}</strong></div>`;
     $('chart').innerHTML = grafico(linhas, parcelas);
   }
 
+  // ---- Relatório A4 ----
+  function gerarRelatorio() {
+    const { p, linhas, parcelas, nomes } = estado;
+    const erros = problemasEntrada();
+    if (!nomes.comp1.trim()) erros.push('Informe o nome do Comprador 1.');
+    const foneOk = id => nomes[id].replace(/\D/g, '').length >= 10;
+    if (!foneOk('fone')) erros.push('Informe o telefone do Comprador 1 (com DDD).');
+    if (nomes.comp2.trim() && !foneOk('fone2')) erros.push('Informe o telefone do Comprador 2 (com DDD).');
+    if (nomes.fone2.trim() && !nomes.comp2.trim()) erros.push('Há telefone do Comprador 2, mas falta o nome dele.');
+    [1, 2].forEach(n => {
+      if (!nomes['ref' + n].trim()) erros.push(`Informe o nome da Referência ${n}.`);
+      if (!foneOk(`ref${n}fone`)) erros.push(`Informe o telefone da Referência ${n} (com DDD).`);
+    });
+    if (!p.unidade) erros.push('Informe a unidade (no início do formulário) e clique em Calcular novamente.');
+    if (!p.prest) erros.push('Informe a 1ª prestação do financiamento (simulador Caixa) e clique em Calcular novamente.');
+    if (erros.length) { $('relMsg').innerHTML = `<div class="msg err">${erros.join('<br>')}</div>`; return; }
+    $('relMsg').innerHTML = '';
+
+    const soma = arr => arr.reduce((s, v) => s + v, 0);
+    const totJO = soma(linhas.map(l => l.jo)), totP = soma(parcelas);
+    const linha = (rotulo, valor) => `<div><span>${rotulo}</span><span>${valor}</span></div>`;
+    const assinaturas = [['comp1', 'Comprador 1'], ['comp2', 'Comprador 2'], ['aval1', 'Avalista 1'], ['aval2', 'Avalista 2']]
+      .filter(([id]) => nomes[id].trim())
+      .map(([id, papel]) => `<div>${esc(nomes[id].trim())}<small>${papel}</small></div>`).join('');
+
+    const t = id => nomes[id].trim();
+    // Telefones dos compradores na coluna da esquerda; referências na da direita
+    const fones = [['fone', 'comp1'], ['fone2', 'comp2']].filter(([id]) => t(id))
+      .map(([id, nome]) => linha(esc(t(nome)), esc(t(id))));
+    const refs = [1, 2].filter(n => t('ref' + n) || t(`ref${n}fone`))
+      .map(n => linha(`Ref. ${n}${t('ref' + n) ? ': ' + esc(t('ref' + n)) : ''}`, esc(t(`ref${n}fone`))));
+    const vazio = '<div></div>';
+    const contatos = [0, 1].filter(i => fones[i] || refs[i]).map(i => (fones[i] || vazio) + (refs[i] || vazio)).join('');
+
+    const dataLocal = `<p class="data-local">${esc(p.emp.cidade || '')}${p.emp.cidade ? ', ' : ''}${HOJE.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>`;
+
+    const folha = $('folha');
+    folha.classList.toggle('compacta', linhas.length > 30);
+    folha.innerHTML = `
+      <div class="titulo">
+        <h1>${esc(p.emp.nome)}</h1>
+        <p>Simulação de juros de obra e parcelamento da entrada</p>
+      </div>
+      <div class="blocos">
+        <div class="bloco"><h4>Dados do negócio</h4>
+          ${linha('Unidade', `${esc(p.unidade)} — ${esc(p.tipo)}`)}
+          ${linha('Valor do imóvel', brl(p.vi))}
+          ${linha('Desconto*', brl(p.desc))}
+          ${linha('Valor com desconto', brl(p.vid))}
+        </div>
+        <div class="bloco"><h4>Composição do pagamento</h4>
+          ${linha('Financiamento', brl(p.fin))}
+          ${linha('Subsídio', brl(p.sub))}
+          ${linha('FGTS', brl(p.fgts))}
+          ${linha('Recursos próprios', brl(p.rp))}
+        </div>
+        <div class="bloco largo"><h4>Parâmetros da simulação</h4>
+          <div class="pares">
+            ${linha('Taxa de juros (nominal)', pct(p.taxa, 2) + ' a.a.')}
+            ${linha('Obra concluída', pct(p.p0, 2))}
+            ${linha('TR estimada', pct(p.tr, 4) + ' a.m.')}
+            ${linha(`1ª prestação (${p.prazoAm}x)`, brl(p.prest))}
+          </div>
+        </div>
+        ${contatos ? `<div class="bloco largo"><h4>Contatos</h4><div class="pares">${contatos}</div></div>` : ''}
+      </div>
+      <table>
+        <thead><tr><th>Mês</th><th>Vencimento</th><th>% obra</th><th>Juros de obra</th><th>Parcela da entrada</th><th>Desembolso total</th></tr></thead>
+        <tbody>
+          <tr class="ato"><td>Ato</td><td>${dataMes(0)}</td><td>—</td><td>—</td><td>${brl(estado.ato)}</td><td class="total">${brl(estado.ato)}</td></tr>
+          ${linhas.map((l, i) => `<tr><td>${l.m}</td><td>${l.data}</td><td>${pct(l.perc)}</td><td>${brl(l.jo)}</td>
+            <td>${parcelas[i] ? brl(parcelas[i]) : '—'}</td><td class="total">${brl(l.jo + parcelas[i])}</td></tr>`).join('')}
+        </tbody>
+        <tfoot><tr><td>Total</td><td></td><td></td><td>${brl(totJO)}</td><td>${brl(totP + estado.ato)}</td><td>${brl(totJO + totP + estado.ato)}</td></tr></tfoot>
+      </table>
+      <p class="aviso">${$('avisoTexto').textContent.replace(/\s+/g, ' ').trim()}</p>
+      <div class="cond-janela" id="janFrente"></div>`;
+    $('verso').innerHTML = `<div class="cond-janela" id="janVerso"></div>`;
+
+    // O mesmo texto vai nas duas janelas: a da frente mostra o início, a do verso continua de onde a frente parou
+    const texto = `<h2 class="cond-titulo">Condições da simulação</h2>${condicoesGerais(p).join('')}
+      <div class="nao-quebra">${dataLocal}<div class="assinaturas">${assinaturas}</div></div>`;
+    $('janFrente').innerHTML = `<div class="condicoes">${texto}</div>`;
+    $('janVerso').innerHTML = `<div class="condicoes">${texto}</div>`;
+    $('modal').hidden = false;
+    const fs = paginarCondicoes();
+    $('relFonte').textContent = fs < COND_FONTE ? `Atenção: texto não coube em ${COND_FONTE} pt; reduzido para ${fs.toLocaleString('pt-BR')} pt.` : '';
+  }
+
+  /*
+   * Paginação das condições gerais (Arial 12, diretriz do jurídico): o texto começa na frente, logo após a tabela,
+   * e continua no verso. O corte é feito no fim de uma linha (pode partir um item); data e assinaturas nunca
+   * são partidas. Se não couber nas duas páginas, reduz a fonte em 0,5pt.
+   */
+  const COND_FONTE = 12;
+  function paginarCondicoes() {
+    const janF = $('janFrente'), janV = $('janVerso');
+    const contF = janF.firstElementChild, contV = janV.firstElementChild;
+    const alturaUtil = folha => {
+      const cs = getComputedStyle(folha);
+      return folha.getBoundingClientRect().bottom - parseFloat(cs.paddingBottom);
+    };
+    for (let fs = COND_FONTE; fs >= 8; fs -= 0.5) {
+      contF.style.fontSize = contV.style.fontSize = fs + 'pt';
+      janF.style.height = ''; contV.style.marginTop = '';
+      const topo = contF.getBoundingClientRect().top;
+      const disponivel = alturaUtil($('folha')) - topo;
+
+      // Pontos de corte possíveis: fim de cada linha de texto e início de cada bloco que não pode ser partido
+      const cortes = [0];
+      const walker = document.createTreeWalker(contF, NodeFilter.SHOW_TEXT);
+      const range = document.createRange();
+      for (let n; (n = walker.nextNode());) {
+        if (!n.textContent.trim() || n.parentElement.closest('.nao-quebra, .destaque')) continue;
+        range.selectNodeContents(n);
+        for (const r of range.getClientRects()) if (r.width > 1) cortes.push(r.bottom - topo);
+      }
+      contF.querySelectorAll('.nao-quebra, .destaque').forEach(el => cortes.push(el.getBoundingClientRect().top - topo));
+      let corte = Math.ceil(Math.max(...cortes.filter(c => c <= disponivel - 1)));
+      // Só o título sem nenhuma linha de texto não vale a pena: manda tudo para o verso
+      const fimTitulo = contF.querySelector('.cond-titulo').getBoundingClientRect().bottom - topo;
+      if (corte <= fimTitulo + 1) corte = 0;
+
+      janF.style.height = corte + 'px';
+      contV.style.marginTop = -corte + 'px';
+      const restante = contF.scrollHeight - corte;
+      if (restante <= alturaUtil($('verso')) - janV.getBoundingClientRect().top) return fs;
+    }
+    return 8;
+  }
+
+  // Texto estático das condições gerais
+  function condicoesGerais(p) {
+    const prazo = p.emp.entregaContratual ? fmtMesExtenso(p.emp.entregaContratual) : '____________________';
+    const item = (nivel, num, html) => `<div class="cond n${nivel}"><span class="num">${num}</span><div>${html}</div></div>`;
+    return [
+      item(0, '1.', `<strong>ITBI e Registro de Imóveis.</strong> Estes custos serão pagos pela M91.`),
+      item(0, '2.', `<strong>*Desconto promocional.</strong> O desconto informado nesta simulação depende de o cliente estar em dia
+        com todos os valores devidos à M91 na data da emissão do habite-se. Se houver inadimplência de qualquer valor junto
+        à M91, o cliente perde o direito à parte do desconto, e o valor correspondente será exigido antes da entrega
+        das chaves, conforme o contrato.`),
+      item(0, '3.', `<strong>Programas habitacionais.</strong> Os benefícios dos programas habitacionais do Governo (subsídios,
+        descontos e taxas reduzidas) dependem de estarem disponíveis e de o cliente, o imóvel e a construtora se
+        enquadrarem neles. Este documento é uma simulação e não constitui oferta nem promessa de concessão desses
+        benefícios.`),
+      item(0, '4.', `<strong>Prazo de entrega.</strong> O prazo de entrega do empreendimento previsto no contrato com a Caixa
+        Econômica Federal é <strong>${prazo}</strong>. A data usada nesta simulação é uma estimativa de um possível
+        adiantamento da conclusão de obra, com base no ritmo atual da construção. Condições contratuais se aplicam.`),
+      item(0, '5.', `<strong>Entrega antecipada.</strong> Se a M91 entregar o imóvel antes do fim do parcelamento da entrada
+        descrito neste documento, as parcelas restantes vencem antecipadamente e devem ser quitadas para a entrega das
+        chaves. O pagamento poderá ser feito à vista ou no cartão de crédito em até 12 vezes. Por mera liberalidade a M91
+        poderá manter os vencimentos das parcelas caso o cliente não fique inadimplente em nenhum momento do negócio,
+        tanto no que se refere à entrada quanto ao juros de obra.`),
+      item(0, '6.', `<strong>Custos de responsabilidade do cliente que NÃO compõem o preço do imóvel</strong>`)
+        + item(1, '6.1', `<strong>Juros de obra</strong> (em caso de dúvidas, procure a Caixa Econômica Federal):`),
+      item(2, '6.1.1', `Os juros de obra (valor das parcelas, prazo de cobrança e demais condições) fazem parte do contrato de
+        financiamento habitacional assinado entre o cliente e a Caixa, e o pagamento é de responsabilidade
+        exclusiva do cliente. <strong>O VALOR PAGO A TÍTULO DE JUROS DE OBRA NÃO COMPÕE O PREÇO DO IMÓVEL.</strong>`),
+      item(2, '6.1.2', `Os juros de obra são cobrados por débito em conta de titularidade do cliente na Caixa Econômica Federal.`),
+      item(2, '6.1.3', `Se a Caixa não conseguir debitar a parcela da conta do cliente, ela poderá debitar automaticamente da
+        conta da M91. Nesse caso, a M91 cobrará diretamente do cliente o ressarcimento do valor.`),
+      item(2, '6.1.4', `A Caixa cobra juros de obra até considerar a obra concluída, conforme suas regras, e liberar o
+        empreendimento para entrega.`),
+      item(2, '6.1.5', `Os valores de juros de obra apresentados são <strong>ESTIMADOS</strong>. São uma projeção baseada no
+        valor financiado, no prazo de obra e na estimativa da TR (Taxa Referencial). Qualquer mudança nesses
+        itens pode aumentar ou diminuir os valores cobrados.`),
+      `<p class="obs"><strong>Observação:</strong> o item 6 acima e seus subitens são apenas informativos. Em caso de
+        dúvidas sobre juros de obra, o cliente deve procurar o setor de Habitação de uma agência da Caixa.</p>`,
+      `<p class="destaque">A PARTIR DE AGORA, O PROJETO É COMPRAR O SEU APARTAMENTO. EVITE ASSUMIR OUTROS COMPROMISSOS
+        FINANCEIROS, FOQUE EM QUITAR O PARCELAMENTO E OS JUROS DE OBRA E GUARDE DINHEIRO PARA A&nbsp;SUA&nbsp;MUDANÇA.</p>`,
+    ];
+  }
+  $('fecharModal').addEventListener('click', () => { $('modal').hidden = true; });
+  $('imprimir').addEventListener('click', () => window.print());
+
   $('form').addEventListener('submit', e => {
     e.preventDefault();
+    const emp = empAtual();
     const p = {
-      fin: money('fin'), rp: money('rp'), taxa: num('taxa'),
-      p0: Math.min(100, Math.max(0, num('p0'))), meses: Math.max(1, Math.round(num('meses'))), tr: num('tr'),
+      emp, unidade: $('unidade').value.trim(), tipo: emp.tipos[+$('tipo').value].nome,
+      vi: money('vi'), vid: money('vid'), desc: money('desc'),
+      fin: money('fin'), sub: money('sub'), fgts: money('fgts'), rp: money('rp'),
+      taxa: num('taxa'), tr: num('tr'),
+      p0: emp.percentualObra, meses: mesesAte(emp.entrega), cota: emp.cotaTerreno,
+      prazoAm: Math.round(num('prazoAm')), prest: money('prest'),
     };
     const erros = [];
     if (!validarComposicao()) erros.push('A soma de financiamento, subsídio, FGTS, recursos próprios e desconto precisa ser igual ao valor do imóvel.');
     if (p.fin <= 0) erros.push('Informe o valor do financiamento.');
+    if (p.cota > p.fin + p.sub + p.fgts) erros.push('A cota terreno é maior que a soma de financiamento, subsídio e FGTS.');
+    if (p.meses < 1) erros.push(`A data de entrega (${fmtEntrega(emp.entrega)}) já passou. Atualize o arquivo empreendimentos.js.`);
     if (erros.length) {
       $('formMsg').innerHTML = `<div class="msg err">${erros.join('<br>')}</div>`;
       return;
     }
     $('formMsg').innerHTML = '';
-    // Mantém ato e parcelas já digitados ao recalcular
+    // Mantém ato, prazo, parcelas e nomes já digitados ao recalcular
     const antigo = estado;
     estado = {
       p, linhas: simular(p),
       ato: antigo ? antigo.ato : 0,
+      prazo: antigo && antigo.prazo <= p.meses ? antigo.prazo : p.meses,
       parcelas: Array.from({ length: p.meses }, (_, i) => antigo?.parcelas[i] ?? 0),
+      nomes: antigo ? antigo.nomes : Object.fromEntries(CAMPOS_RELATORIO.map(id => [id, ''])),
     };
     render();
   });
 
-  atualizarDesconto();
+  if (!EMPS.length) {
+    $('empMsg').innerHTML = `<div class="msg err">Não foi possível carregar a lista de empreendimentos
+      (arquivo <strong>empreendimentos.js</strong>). Ele precisa estar na mesma pasta do index.html.
+      No painel do Claude, abra pelo servidor local (http://localhost:8080) e não pelo arquivo.</div>`;
+  } else {
+    carregarEmpreendimento();
+  }
+  validarPrestacao();
 </script>
 </body>
 </html>
